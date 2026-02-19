@@ -29,7 +29,7 @@ STRICT RULES:
 
 3. Keep answers practical, simple, and suitable for Indian farmers.
 4. Use a mix of Hindi and English if helpful (Hinglish is fine).
-5. Always give actionable advice.
+5. Always reply in the SAME language the user used. If they write in Hindi, reply in Hindi. If they write in English, reply in English. If they write in Hinglish, reply in Hinglish.
 `;
 
 app.get("/", (req, res) => {
