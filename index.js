@@ -14,6 +14,9 @@ const GROQ_API_KEY    = process.env.GROQ_API_KEY;
 // 🌐 LANGUAGE DETECTION — CODE LEVEL
 // ─────────────────────────────────────────────
 function detectLanguage(message) {
+  const msg = message.toLowerCase().trim();
+
+  // ── Devanagari script detection ──
   const marwadiWords = [
     'म्हारी','म्हारो','थारी','थारो','चाइजे',
     'लाग्यो','कियां','कुण','बोऊं','होवै',
@@ -32,6 +35,63 @@ function detectLanguage(message) {
 
   if (isMarwadi) return 'MARWADI';
   if (isHaryanvi) return 'HARYANVI';
+
+  // ── Roman script (transliterated) detection ──
+  // These are words that ONLY appear in Hindi/regional languages written in English letters
+
+  const romanMarwadiWords = [
+    'mharo','mhari','tharo','thari','thnai','thanai',
+    'chaije','hovai','hove','howai','hosi',
+    'aar ','iṇro','lagyo','kiyan','kun ','jaano',
+    'rakho','milai','kitto','karno'
+  ];
+
+  const romanHaryanviWords = [
+    'mhara','mhari','tankne','tanne','tannai',
+    'ghanna','ghna','hojyagi','hojayegi',
+    'karni se','karni sai','sa hai','chaye',
+    'kidhar sa','kaun sa se','dalni','abhi ka'
+  ];
+
+  const romanHindiWords = [
+    'mein ','main ','kaise','kaisa','kaisi',
+    'karna','karo','karta','karti','karein',
+    'kya ','kyun','kyunki','lekin','aur ',
+    'nahi','nai ','hoga','hogi','hote',
+    'chahiye','chaahiye','paani','pani ',
+    'fasal','khet','mitti','kheti','beej',
+    'ugana','ugau','ugaye','lagana','lagao',
+    'rog ','bimari','dawaai','dawai','khad',
+    'sinchai','paidawar','upaj','katai',
+    'mirchi','tamatar','aalu','pyaaz','gehun',
+    'chawal','makka','sarso','ganna','kapas',
+    'aam ','kela','angur','nimbu','santara',
+    'gaye','bail','bakri','murgi','dudh',
+    'jamin','jameen','barish','mausam','dhoop',
+    'kab ','kab?','kahan','kidhar','kitna',
+    'kitni','kitne','accha','acha','theek',
+    'batao','bataiye','samjhao','madad'
+  ];
+
+  const romanMarathiWords = [
+    'jevli','jevlika','jevlikas','kevha','kadhi',
+    'kasa','kashi','kase','aahe','nahi ',
+    'kara ','karawa','karava','pani ','paus',
+    'zamin','shetat','pik ','khate','khat ',
+    'mala ','tumhi','aapan','hoil','asel',
+    'pahije','pahije','lagel','milel','yeil'
+  ];
+
+  const isRomanMarwadi = romanMarwadiWords.some(w => msg.includes(w));
+  const isRomanHaryanvi = romanHaryanviWords.some(w => msg.includes(w));
+  const isRomanMarathi = romanMarathiWords.some(w => msg.includes(w));
+  const isRomanHindi = romanHindiWords.some(w => msg.includes(w));
+
+  if (isRomanMarwadi) return 'ROMAN_MARWADI';
+  if (isRomanHaryanvi) return 'ROMAN_HARYANVI';
+  if (isRomanMarathi) return 'ROMAN_MARATHI';
+  if (isRomanHindi) return 'ROMAN_HINDI';
+
   return 'OTHER';
 }
 
@@ -113,6 +173,66 @@ Every single word must be Haryanvi. Hindi is completely BANNED.
 SELF CHECK: Before sending, scan every sentence.
 If any banned word found → rewrite that sentence in Haryanvi.
 Every statement MUST end with सै.
+`;
+  }
+
+  // ── ROMAN SCRIPT (Transliterated) language instructions ──
+
+  if (lang === 'ROMAN_HINDI') {
+    return `
+⚠️ STRICT ORDER — HINGLISH / ROMAN HINDI:
+The user has written in ROMAN HINDI (Hindi typed in English letters, e.g. "mein mirchi kaise ugau").
+This is NOT English. You MUST reply in HINGLISH — natural Hindi mixed with English, written in Hindi (Devanagari) script.
+
+✅ Reply like a helpful friend speaking Hinglish:
+- Use natural Hindi: मैं, कैसे, करना, फसल, खेत, मिट्टी, पानी, चाहिए, होगा
+- Mix English terms for technical words if needed (e.g. fertilizer, pH, drip irrigation)
+- Tone should be warm and conversational, like talking to a farmer friend
+
+❌ BANNED: Pure English reply, Haryanvi dialect (सै endings), Marwadi dialect (थारो/होवै), Marathi words
+❌ DO NOT reply in English just because the user typed in Roman script
+
+SELF CHECK: Your reply must be in Devanagari Hinglish, NOT English.
+`;
+  }
+
+  if (lang === 'ROMAN_MARATHI') {
+    return `
+⚠️ STRICT ORDER — ROMAN MARATHI:
+The user has written in ROMAN MARATHI (Marathi typed in English letters, e.g. "jevlikas", "kevha lavavi").
+This is NOT English. You MUST reply in proper MARATHI (Devanagari script).
+
+✅ Use proper Marathi: आहे, आहेत, आणि, नाही, करा, तुम्ही, पाहिजे, होईल, लागेल, मिळेल
+❌ BANNED: English reply, Hindi words (है/और), Haryanvi/Marwadi dialect words
+
+SELF CHECK: Reply must be 100% Marathi in Devanagari script. Zero English or Hindi words.
+`;
+  }
+
+  if (lang === 'ROMAN_MARWADI') {
+    return `
+⚠️ STRICT ORDER — ROMAN MARWADI:
+The user has written in ROMAN MARWADI (Marwadi typed in English letters).
+This is NOT English. You MUST reply in proper MARWADI (Devanagari script).
+
+✅ Use proper Marwadi: म्हारो, थारो, थारी, थनै, अर, पण, होवै, होसी, चाइजे, फसलां
+❌ BANNED: English reply, Hindi words, Haryanvi dialect words (सै)
+
+SELF CHECK: Reply must be 100% Marwadi in Devanagari script.
+`;
+  }
+
+  if (lang === 'ROMAN_HARYANVI') {
+    return `
+⚠️ STRICT ORDER — ROMAN HARYANVI:
+The user has written in ROMAN HARYANVI (Haryanvi typed in English letters).
+This is NOT English. You MUST reply in proper HARYANVI (Devanagari script).
+
+✅ Use proper Haryanvi: म्हारा, तन्नै, तेरा, अर, पण, सै, होसी, होज्यागी, चाइए, फसलां
+✅ Every sentence MUST end with सै
+❌ BANNED: English reply, Hindi words (है/और), Marwadi dialect words (होवै/थारो)
+
+SELF CHECK: Reply must be 100% Haryanvi in Devanagari script. Every statement ends with सै.
 `;
   }
 
