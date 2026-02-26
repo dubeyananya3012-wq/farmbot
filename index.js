@@ -175,6 +175,45 @@ function detectLanguage(message) {
   if (isRomanMarathi) return 'ROMAN_MARATHI';
   if (isRomanHindi) return 'ROMAN_HINDI';
 
+  // ── Devanagari Marathi — detect HERE so it never falls into Hindi fallback ──
+  const devanagariMarathiMarkers = [
+    // शकतो/शकते = "can" — THE most unique Marathi marker, never exists in Hindi
+    'शकतो','शकते','शकतात','शकतोस',
+    // मी = "I" in Marathi (Hindi uses मैं — completely different)
+    'मी ','मी?',
+    // Unique Marathi verb forms ending -ू (infinitive/cohortative)
+    'पिकवू','उगवू','लावू ','करू ','सांगू','घेऊ ','देऊ ','बघू ','येऊ ','जाऊ ',
+    // Marathi verb present tense -तो/-ते (I do / she does)
+    'पिकवतो','पिकवते','लावतो','लावते','उगवतो',
+    'सांगतो','सांगते','बघतो','बघते','येतो','येते',
+    // Marathi possessives with -च्या/-चे/-ची/-चा (unique to Marathi)
+    'माझ्या','माझे ','माझी ','माझा ',
+    'तुझ्या','तुझे ','आमच्या','तुमच्या','आपल्या',
+    // Core unique Marathi function words
+    'आहे ','आहेत ','होईल','असेल ','मिळेल','लागेल',
+    'म्हणजे','म्हणून','जेव्हा','तेव्हा',
+    'पाहिजे','करायचे','करावे','लावावे',
+    // Marathi question words unique to Marathi
+    'कुठे ','केव्हा ','कोणते','कोणती',
+    // Marathi agriculture & unique vocab
+    'शेतात ','पिकाचे','बियाणे','कीटकनाशक','कोंबडी','शेळी',
+    // Additional common Marathi verb forms
+    'करायची','करायचे','करायचा',   // to do (inf)
+    'लागवड','लागवडी',             // plantation — pure Marathi word
+    'ओळखावे','ओळखतो','ओळखते',    // to identify
+    'सांगावे','द्यावे','घ्यावे',  // tell/give/take (polite)
+    'कशी ','कसे ','कसा ',         // how (Marathi form)
+    'मला ','तुला ','त्यांना ',    // to me/you/them
+    'किती ','कोणते','कोणती','कोणता', // how much / which
+    'नक्की','नक्कीच',             // definitely — common Marathi filler
+    'खूप ','खूपच',                // very — Marathi form (Hindi uses बहुत)
+    'चांगले','चांगली','चांगला',   // good — pure Marathi
+    'योग्य ','योग्यरित्या',       // proper/correctly
+    'आवश्यक','गरजेचे','गरजेची'   // necessary — Marathi forms
+  ];
+  const isDevanagariMarathi = devanagariMarathiMarkers.some(w => message.includes(w));
+  if (isDevanagariMarathi) return 'MARATHI';
+
   return 'OTHER';
 }
 
@@ -323,6 +362,60 @@ This is NOT English. You MUST reply in HINGLISH — natural Hindi mixed with Eng
 ❌ DO NOT reply in English just because the user typed in Roman script
 
 SELF CHECK: Your reply must be in Devanagari Hinglish, NOT English.
+`;
+  }
+
+  if (lang === 'MARATHI') {
+    return `
+⚠️ STRICT ORDER — MARATHI ONLY:
+The user has written in MARATHI (Devanagari script). You MUST reply 100% in standard Marathi.
+Every single word must be proper Marathi. Hindi, Haryanvi, Marwadi, and English are completely BANNED.
+
+✅ ALWAYS USE these Marathi words:
+- Is/Are       → आहे, आहेत
+- Is not       → नाही
+- Can          → शकतो, शकते (NEVER करा सकते — that is Hindi)
+- And          → आणि
+- But          → पण
+- Because      → कारण
+- So           → म्हणून
+- If           → जर
+- When         → जेव्हा
+- You          → तुम्ही, आपण
+- Your         → तुमचे, तुमची, तुमचा, आपले
+- I/My         → मी, माझे, माझी, माझा
+- Water        → पाणी
+- Should       → पाहिजे, हवे
+- Will be      → होईल, असेल
+- Will get     → मिळेल, लागेल
+- Soil         → माती, जमीन
+- Crop         → पीक
+- Farming      → शेती
+- Field        → शेत
+- Spray        → फवारणी करा
+- Fertilizer   → खत
+- Disease      → रोग
+- Pest         → कीड
+- Seeds        → बियाणे
+- Irrigation   → सिंचन
+- Harvest      → कापणी
+
+❌ BANNED — replace immediately:
+सै, होवै, होसी, अर, थारो, थारी, चाइजे (Haryanvi/Marwadi)
+है, हैं, और, लेकिन, यदि, आप, आपकी, करा सकते, उगाई जाती (Hindi)
+Any English words unless it is a technical term with no Marathi equivalent
+
+✅ MARATHI FEW-SHOT EXAMPLE:
+User: मी मिरची पिकवू शकतो का?
+Bot: हो, तुम्ही मिरची नक्कीच पिकवू शकता! मिरची हे भारतात खूप लोकप्रिय पीक आहे. तुमच्यासाठी हे उपाय आहेत:
+1. *माती निवड*: मिरचीसाठी चांगली निचरा होणारी माती पाहिजे. मातीचे pH 6.0 ते 6.8 दरम्यान असणे आवश्यक आहे.
+2. *बियाणे निवड*: तुमच्या भागानुसार योग्य मिरचीची जात निवडा. हिरवी मिरची, लाल मिरची किंवा सुकी मिरची यापैकी तुम्हाला हवी ती निवडा.
+3. *सिंचन*: मिरचीला नियमित पाणी पाहिजे, पण जास्त पाणी दिल्याने मुळ्या सडतात. ठिबक सिंचन वापरणे सर्वात चांगले आहे.
+4. *खत*: मिरचीला नत्र, स्फुरद आणि पालाश असलेले संतुलित खत द्या. जास्त नत्र दिल्याने पाने जास्त आणि फळे कमी होतात.
+5. *कीड आणि रोग*: मिरचीमध्ये माइट आणि थ्रिप्सचा प्रादुर्भाव होतो. त्यांना नियंत्रित करण्यासाठी कडुलिंबाचे तेल पाण्यात मिसळून फवारणी करा.
+6. *कृषी अधिकारी*: जवळच्या कृषी केंद्रात जाऊन तुमच्या मातीची तपासणी करा आणि योग्य जातीची मिरची निवडण्यासाठी सल्ला घ्या.
+
+SELF CHECK: Every sentence must be proper Marathi. Zero Hindi, dialect, or unnecessary English words.
 `;
   }
 
@@ -491,31 +584,51 @@ SELF CHECK: Your entire reply must be in Devanagari Haryanvi. Every statement MU
 
   // ── Detect Marathi (Devanagari script) ──
   const marathiWords = [
-    // Core Marathi verbs (unique to Marathi, not Hindi)
+    // ✅ HIGH-PRIORITY: Unique Marathi verb forms NOT in Hindi
+    'शकतो','शकते','शकतात','शकतोस',   // can (shakto/shakte) — PURE MARATHI
+    'पिकवू','पिकवणे','पिकवतो','पिकवते', // to grow/cultivate
+    'लावू','लावणे','लावतो','लावते',     // to plant
+    'उगवू','उगवणे','उगवतो',             // to sprout
+    'करू ','करतो','करते','करतात',       // to do (Marathi form)
+    'सांगू','सांगतो','सांगते',           // to tell
+    'घेऊ','घेतो','घेते','घेतात',        // to take
+    'देऊ','देतो','देते','देतात',         // to give
+    'बघू','बघतो','बघते',                // to see/check
+    'येऊ','येतो','येते','येतात',         // to come
+    'जाऊ','जातो','जाते','जातात',        // to go
+    // ✅ Marathi pronouns — मी is THE most unique Marathi marker
+    'मी ','माझ्या','माझे','माझी','माझा', // I / my
+    'तुझ्या','तुझे','तुझी','तुझा',       // your (informal)
+    'त्याच्या','तिच्या','त्यांच्या',     // his/her/their
+    'आमच्या','तुमच्या','आपल्या',        // our/your/our (formal)
+    // ✅ Core Marathi verbs
     'आहे','आहेत','नाही','होईल','असेल',
     'लागेल','मिळेल','येईल','सांगतो','सांगते',
     'बघतो','बघते','करायचे','करावे','लावावे',
     'काढावे','द्यावे','घ्यावे','फवारावे',
-    // Marathi connectors & pronouns
-    'आणि','पण ','म्हणजे','म्हणून','जेव्हा','तेव्हा',
+    // ✅ Marathi connectors & pronouns
+    'आणि','म्हणजे','म्हणून','जेव्हा','तेव्हा',
     'मला','तुला','त्याला','तिला','आम्ही','तुम्ही',
     'आपण','आपल्या','आमच्या','तुमच्या',
     'पाहिजे','हवे ','नको ',
-    // Marathi agriculture vocabulary
+    // ✅ Marathi question words
+    'कसे ','कसा ','कशी ','कुठे','केव्हा','किती ',
+    'कोणते','कोणती','कोणता','काय ','का?','का ',
+    // ✅ Marathi agriculture vocabulary
     'शेती','शेतात','शेताला','शेताचे',
     'पीक','पिकाचे','पिकाला','पिकाची',
     'माती','मातीची','मातीला',
-    'पाऊस','पावसाळा','वर्षा',
-    'खत','खताची','खताला','बियाणे','बी ',
-    'सिंचन','पाणी द्या','ओलावा',
-    'रोग','कीड','कीटकनाशक','बुरशी',
-    'कांदा','लसूण','टोमॅटो','मिरची',
+    'पाऊस','पावसाळा',
+    'खत','खताची','खताला','बियाणे',
+    'सिंचन','ओलावा',
+    'कीड','कीटकनाशक','बुरशी',
+    'कांदा','लसूण','टोमॅटो',
     'गहू','तांदूळ','ज्वारी','बाजरी','मका',
-    'उसाची','उस ','कापूस','सोयाबीन',
-    'जमीन','जमिनीची','जमिनीला',
-    'नांगरणे','खुरपणी','निराई','कापणी',
-    'उत्पादन','विक्री','बाजार','भाव',
-    'गाय','बैल','दूध','कोंबडी','शेळी'
+    'कापूस','सोयाबीन',
+    'जमीन','जमिनीची',
+    'नांगरणे','खुरपणी','कापणी',
+    'उत्पादन','विक्री',
+    'कोंबडी','शेळी'
   ];
   const isMarathi = marathiWords.some(w => message.includes(w));
   if (isMarathi) {
