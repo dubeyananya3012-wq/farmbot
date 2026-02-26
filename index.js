@@ -33,7 +33,15 @@ STRICT RULES:
 - If they write in Hindi, reply in Hindi only.
 - If they write in Marathi, reply in Marathi only.
 - If they write in Marwadi, reply in Marwadi only.
+  DO NOT reply in Hindi. Marwadi is a different language
+  spoken in Rajasthan. Use Marwadi words like:
+  म्हारो, कियां, कुण, इणरो, बोऊं, पाणी, छिड़को, थारी,
+  कितरो, लाग्यो, चाइजे, मिलै, करणो, राखो.
 - If they write in Haryanvi, reply in Haryanvi only.
+  DO NOT reply in Hindi. Haryanvi is a different language
+  spoken in Haryana. Use Haryanvi words like:
+  म्हारा, के सै, कित्ता, सै, बता, लाग्या सै, करणा सै,
+  चाइए, कौन सी, डालणी, बोऊं, मिलें सें, आला, आली.
 - If they write in Hinglish, reply in Hinglish only.
 5. Always give actionable advice.
 `;
