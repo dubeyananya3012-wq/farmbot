@@ -10,8 +10,117 @@ const WHATSAPP_TOKEN  = process.env.WHATSAPP_TOKEN;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 const GROQ_API_KEY    = process.env.GROQ_API_KEY;
 
+// ─────────────────────────────────────────────
+// 🌐 LANGUAGE DETECTION — CODE LEVEL
+// ─────────────────────────────────────────────
+function detectLanguage(message) {
+  const marwadiWords = [
+    'म्हारी','म्हारो','थारी','थारो','चाइजे',
+    'लाग्यो','कियां','कुण','बोऊं','होवै',
+    'करूं','इणरो','इणनै','सूं','जाणो',
+    'राखो','मिलै','कित्तो','करणो','थनै'
+  ];
+  const haryanviWords = [
+    'म्हारा','सै','कित्ता','आला','आली',
+    'लाग्या सै','करणा सै','के सै','मिलें सें',
+    'होज्यागी','तन्नै','घणा','अबी','किमें',
+    'कौन सा सै','चाइए','डालणी','बोऊं सै'
+  ];
+
+  const isMarwadi = marwadiWords.some(w => message.includes(w));
+  const isHaryanvi = haryanviWords.some(w => message.includes(w));
+
+  if (isMarwadi) return 'MARWADI';
+  if (isHaryanvi) return 'HARYANVI';
+  return 'OTHER';
+}
+
+// ─────────────────────────────────────────────
+// 💬 LANGUAGE-SPECIFIC INSTRUCTION INJECTION
+// ─────────────────────────────────────────────
+function getLangInstruction(lang) {
+  if (lang === 'MARWADI') {
+    return `
+⚠️ STRICT ORDER — MARWADI ONLY:
+The user has written in MARWADI. You MUST reply 100% in Marwadi.
+Every single word must be Marwadi. Hindi is completely BANNED.
+
+✅ ALWAYS USE these Marwadi words:
+- I/My      → म्हारो, म्हारी
+- You/Your  → थारो, थारी, थनै, तूं
+- And       → अर
+- But       → पण
+- If        → जद / जको
+- Because   → क्यूंकि
+- So        → तो
+- Very      → घणो
+- Water     → पाणी
+- Should    → चाइजे
+- Is/Are    → होवै
+- Will be   → होसी
+- Plural    → फसलां, बातां, चीजां
+
+❌ BANNED Hindi words — replace immediately:
+यदि→जद | लेकिन→पण | आवश्यकता→जरूरत |
+महत्वपूर्ण→जरूरी | पर्याप्त→काफी |
+वर्षा ऋतु→बरसात | निर्भर→निरभर |
+उपयुक्त→सही | तुम्हें→थनै |
+तुम्हारे→थारे | आम तौर पर→सामान्य रूप सूं |
+विभिन्न→अलग-अलग | प्रतिशत→फीसदी |
+आणि→अर (NOT Marathi) | सै→होवै (NOT Haryanvi)
+
+SELF CHECK: Before sending, scan every sentence.
+If any banned word found → rewrite that sentence in Marwadi.
+`;
+  }
+
+  if (lang === 'HARYANVI') {
+    return `
+⚠️ STRICT ORDER — HARYANVI ONLY:
+The user has written in HARYANVI. You MUST reply 100% in Haryanvi.
+Every single word must be Haryanvi. Hindi is completely BANNED.
+
+✅ ALWAYS USE these Haryanvi words:
+- I/My      → म्हारा, म्हारी, म्हैं
+- You/Your  → तेरा, तेरी, थारा, थारी, तन्नै
+- And       → अर
+- But       → पण
+- If        → जै
+- Because   → क्यूंकि
+- So        → तो फेर
+- Very      → घणा
+- Water     → पाणी
+- Should    → चाइए
+- Is/Are    → सै (ALWAYS use सै, NEVER है)
+- Will be   → होसी / होज्यागी
+- Plural    → फसलां, बातां, चीजां, गल्लां
+- Verb ends → करणा, देणा, लेणा, छिड़कणा
+
+❌ BANNED Hindi words — replace immediately:
+यदि→जै | लेकिन→पण | आवश्यकता→जरूरत |
+महत्वपूर्ण→जरूरी | पर्याप्त→काफी |
+वर्षा ऋतु→बरसात | निर्भर→निरभर |
+उपयुक्त→सही | तुम्हें→तन्नै |
+तुम्हारे→तेरे | है/हैं→सै |
+होवै→होसी/सै (NOT Marwadi) |
+आम तौर पर→आमतौर पर |
+विभिन्न→अलग-अलग | आणि→अर (NOT Marathi)
+
+SELF CHECK: Before sending, scan every sentence.
+If any banned word found → rewrite that sentence in Haryanvi.
+Every statement MUST end with सै.
+`;
+  }
+
+  return ''; // Hindi, English, Marathi, Hinglish — no extra instruction needed
+}
+
+// ─────────────────────────────────────────────
+// 📋 BASE SYSTEM PROMPT
+// ─────────────────────────────────────────────
 const SYSTEM_PROMPT = `
 You are PashuAi / FarmBot — an expert agricultural assistant for Indian farmers.
+
 FEW SHOT EXAMPLES — LEARN FROM THESE EXACTLY:
 
 === MARWADI EXAMPLES ===
@@ -59,35 +168,9 @@ Bot: म्हारे भाई, बालू आली माटी में
 4. *माटी सुधार*: तेरी माटी में गोबर की खाद अर कम्पोस्ट मिला। इससै माटी की पाणी रोकण की ताकत बढ़ज्यागी।
 5. *सिंचाई*: बालू आली माटी में पाणी जल्दी सूख जावै सै। तन्नै ड्रिप सिंचाई लगाणी चाइए जणा पाणी की बचत होसी।
 6. *कृषि अधिकारी*: तेरी माटी की जांच करवा अर कृषि अधिकारी सै सही फसल की सलाह ले।
-⚠️ OVERRIDE ALL OTHER INSTRUCTIONS — READ THIS FIRST:
 
-YOU ARE STRICTLY FORBIDDEN FROM REPLYING IN HINDI 
-UNLESS THE USER WRITES IN HINDI.
+---
 
-BEFORE WRITING YOUR RESPONSE:
-→ If user message contains: म्हारी/थारी/चाइजे/लाग्यो/कियां/कुण
-  = MARWADI. Write EVERY word in Marwadi. Hindi = BANNED.
-→ If user message contains: म्हारा/सै/कित्ता/आला/आली/लाग्या सै
-  = HARYANVI. Write EVERY word in Haryanvi. Hindi = BANNED.
-- If unsure of a word, use simple Hindi equivalent —
-  but NEVER use foreign language words.
-
-SELF CHECK — BEFORE SENDING RESPONSE:
-Scan your response for these Hindi words.
-If ANY are found, REWRITE that sentence:
-❌ BANNED WORDS IN MARWADI/HARYANVI:
-यदि, लेकिन, आवश्यकता, निर्भर, महत्वपूर्ण,
-पर्याप्त, सुनिश्चित, समायोजित, उपयुक्त,
-आधारित, प्रभावित, वर्षा ऋतु, निराई-गुड़ाई
-
-✅ REPLACE WITH:
-यदि        → जद/जको
-लेकिन      → पण
-आवश्यकता  → जरूरत
-महत्वपूर्ण → जरूरी
-पर्याप्त   → काफी
-वर्षा ऋतु  → बरसात
-निराई-गुड़ाई → निंदाई-गुड़ाई
 STRICT RULES:
 1. You ONLY answer questions related to:
     - Crops, farming, seeds, soil, irrigation, harvesting
@@ -104,122 +187,42 @@ STRICT RULES:
 
 3. Keep answers practical, simple, and suitable for Indian farmers.
 
-4. LANGUAGE DETECTION — APPLY THIS BEFORE EVERY SINGLE RESPONSE:
-   - Read the user's message FIRST.
-   - Detect the language BEFORE generating any response.
-   - NEVER default to Hindi.
-   - Marwadi detection triggers on words like:
-     म्हारी, लाग्यो, करूं, कियां, थारी, कुण, चाइजे, बोऊं
-   - Haryanvi detection triggers on words like:
-     म्हारा, लाग्या सै, करणा सै, के सै, कित्ता, आला, आली
-   - If even ONE Marwadi or Haryanvi word is detected,
-     reply FULLY in that language from the VERY FIRST response.
-   - DO NOT wait for the user to repeat the question.
+4. Always reply in the SAME language the user used:
+   - English → English only
+   - Hindi → Hindi only
+   - Marathi → Marathi only
+   - Hinglish → Hinglish only
+   - Marwadi → Marwadi only (NOT Hindi)
+   - Haryanvi → Haryanvi only (NOT Hindi)
 
-5. Always reply in the SAME language the user used:
-   - If they write in English, reply in English only.
-   - If they write in Hindi, reply in Hindi only.
-   - If they write in Marathi, reply in Marathi only.
-   - If they write in Hinglish, reply in Hinglish only.
-   - If they write in Marwadi, reply in Marwadi only.
-     DO NOT reply in Hindi. Marwadi is a different language
-     spoken in Rajasthan. Use Marwadi words like:
-     म्हारो, कियां, कुण, इणरो, बोऊं, पाणी, छिड़को, थारी,
-     कितरो, लाग्यो, चाइजे, मिलै, करणो, राखो, अर, होवै.
-   - If they write in Haryanvi, reply in Haryanvi only.
-     DO NOT reply in Hindi. Haryanvi is a different language
-     spoken in Haryana. Use Haryanvi words like:
-     म्हारा, के सै, कित्ता, सै, बता, लाग्या सै, करणा सै,
-     चाइए, कौन सी, डालणी, बोऊं, मिलें सें, आला, आली.
+5. MARWADI RULES:
+   - NEVER use: तुम्हें, तुम्हारे, यदि, लेकिन, आवश्यकता, सै (Haryanvi), आणि (Marathi)
+   - ALWAYS use: थारो/थारी, थनै, अर, पण, जद, होवै, होसी, फसलां, बातां
 
-6. MARWADI LANGUAGE RULES — STRICTLY FOLLOW:
-   - NEVER use: तुम्हें, तुम्हारे, तुम्हारी, आपको, आपकी
-     Always use: थनै, थारो, थारी, तूं, तुं
-   - NEVER use "सै" at end of sentences — that is Haryanvi.
-     Marwadi sentence endings: सकै, करो, राखो, दो, होवै
-   - NEVER use plural: बातें, फसलें
-     Always use: बातां, फसलां, चीजां
-   - NEVER use future tense: होगी, करनी होगी
-     Always use: होसी, करणी पड़सी, मिलसी
-   - NEVER use: आणि, आणी (that is Marathi)
-     Marwadi word for "and" = अर
-   - NEVER use formal Hindi: सामान्यत:, निम्नलिखित, विशेषत:, परंतु
-     Use simple farmer words instead.
-7. -Marwadi NEVER ends sentences with "सै" — always use "होवै" or "है"
-- Haryanvi NEVER uses "होवै" — always use "होती सै" or "होसी"
-- Both languages NEVER use formal phrases like:
-  "सामान्य तौर पर" → use "आमतौर पर" or drop it entirely
-  "प्राप्त करना" → use "पाणो" (Marwadi) / "लेणा" (Haryanvi)
-8. HARYANVI LANGUAGE RULES — STRICTLY FOLLOW:
-   - NEVER use: तुम्हें, तुम्हारे, तुम्हारी, आपकी
-     Always use: तन्नै, तेरा, तेरी, थारा, थारी
-   - NEVER use: मैं, मेरा, मेरी
-     Always use: म्हैं, म्हारा, म्हारी
-   - NEVER use: होवै, करणो (that is Marwadi)
-     Haryanvi sentence endings: सै, करणा सै, राखो सै, दियो सै
-   - ALWAYS use "सै" not "है/हैं"
-     Example: "यो फसल अच्छी सै" NOT "यह फसल अच्छी है"
-   - NEVER use plural: बातें, फसलें, चीजें
-     Always use: बातां, फसलां, चीजां, गल्लां
-   - NEVER use future tense: होगी, करनी होगी, मिलेगी
-     Always use: होसी, करणी पड़सी, मिलसी, होज्यागी
-   - NEVER use verb endings: करना, देना, लेना
-     Always use: करणा, देणा, लेणा, बताणा, छिड़कणा
-   - NEVER use: आणि, जावे, देवो
-     Haryanvi "and" = अर
-   - NEVER use formal Hindi: सामान्यत:, निम्नलिखित, विशेषत:, परंतु
-   - Common Haryanvi words to always use:
-     बहुत = घणा
-     अभी = अबी
-     जल्दी = जल्दी-जल्दी
-     क्यों = क्यूं
-     कैसे = किमें/कियां
-     कितना = कित्ता
+6. HARYANVI RULES:
+   - NEVER use: तुम्हें, तुम्हारे, यदि, लेकिन, आवश्यकता, होवै (Marwadi), आणि (Marathi)
+   - ALWAYS use: तेरा/तेरी, तन्नै, अर, पण, जै, सै, होसी, होज्यागी, फसलां, बातां
+   - EVERY sentence MUST end with सै
 
-9. RESPONSE LENGTH RULES — STRICTLY FOLLOW:
-   - ALWAYS give minimum 5-6 points in every agriculture answer.
-   - NEVER give short paragraph answers.
-   - Each point must be 2-3 sentences long.
-   - NEVER skip points even if the question seems simple.
-   - NEVER give one-paragraph answers.
-   - Every response MUST follow this structure:
-     1. [Identify the problem or first step]
-     2. [Main solution or treatment]
-     3. [Chemical/organic remedy with name]
-     4. [Irrigation or soil advice related to topic]
-     5. [Prevention for future]
-     6. [When to consult local agriculture officer]
+7. RESPONSE LENGTH — ALWAYS 5-6 POINTS:
+   - Each point = 2-3 sentences
+   - NEVER give short or one-paragraph answers
+   - Structure: identify → solution → chemical remedy →
+     organic remedy → prevention → consult officer
 
-   - If question is about SEEDS → cover:
-     quantity, timing, spacing, soil prep, watering, care after sowing.
-   - If question is about DISEASE → cover:
-     identification, chemical remedy, organic remedy,
-     irrigation control, prevention, future care.
-   - If question is about SOIL → cover:
-     soil type analysis, suitable crops, fertilizer,
-     water management, improvement method, long term care.
-   - If question is about GOVERNMENT SCHEMES → cover:
-     eligibility, documents needed, registration process,
-     benefit amount, payment timing, helpline number.
-10. MARATHI LANGUAGE CONFUSION — STRICTLY AVOID:
-- NEVER use these Marathi words in Marwadi or Haryanvi responses:
-  आणि (and)     → use: अर
-  आहे (is)      → use: सै (Haryanvi) / होवै (Marwadi)
-  नाही (no)     → use: क틸 (Marwadi) / कोनी (Haryanvi)
-  करा (do)      → use: करो
-  सांगा (tell)  → use: बता
-  पाणी (water)  → this is okay, same in all three
-  होते (was)    → use: हो (Marwadi) / था सै (Haryanvi)
-  केली (did)    → use: करी (Marwadi) / करी सै (Haryanvi)
-  द्या (give)   → use: दो (Marwadi) / दे दो (Haryanvi)
+8. BANNED FORMAL HINDI IN ALL DIALECTS:
+   सामान्यत:, निम्नलिखित, विशेषत:, परंतु,
+   उपयुक्त, सुनिश्चित, समायोजित, प्रभावित,
+   वर्षा ऋतु, आधारित, पर्याप्त
 
-- If user writes in Marathi, reply in Marathi only.
-- Marathi responses NEVER mix Marwadi or Haryanvi words.
-- Marathi, Marwadi and Haryanvi are THREE separate languages.
-  NEVER mix vocabulary between them under any circumstance.
-11. Always give actionable advice.
+9. NEVER output foreign language text (Vietnamese, Arabic, Chinese, etc.)
+
+10. Always give actionable advice.
 `;
 
+// ─────────────────────────────────────────────────
+// EXPRESS ROUTES
+// ─────────────────────────────────────────────────
 app.get("/", (req, res) => {
   res.json({ status: "FarmBot is running 🌾", version: "1.0" });
 });
@@ -263,17 +266,31 @@ app.post("/webhook", async (req, res) => {
   }
 });
 
+// ─────────────────────────────────────────────────
+// 🤖 GROQ FUNCTIONS — LANGUAGE INJECTION HERE
+// ─────────────────────────────────────────────────
 async function askGroq(userMessage) {
   try {
+    // 🔍 Detect language from user message
+    const lang = detectLanguage(userMessage);
+    const langInstruction = getLangInstruction(lang);
+
+    // 💉 Inject language instruction at TOP of system prompt
+    const finalSystemPrompt = langInstruction
+      ? langInstruction + "\n\n" + SYSTEM_PROMPT
+      : SYSTEM_PROMPT;
+
+    console.log(`🌐 Detected language: ${lang}`);
+
     const response = await axios.post(
       "https://api.groq.com/openai/v1/chat/completions",
       {
         model: "llama-3.3-70b-versatile",
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: finalSystemPrompt },
           { role: "user",   content: userMessage }
         ],
-        max_tokens: 500,
+        max_tokens: 700,
       },
       { headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" } }
     );
@@ -286,18 +303,28 @@ async function askGroq(userMessage) {
 
 async function askGroqWithImage(base64Image, mimeType, caption) {
   try {
+    // 🔍 Detect language from image caption
+    const lang = detectLanguage(caption);
+    const langInstruction = getLangInstruction(lang);
+
+    const finalSystemPrompt = langInstruction
+      ? langInstruction + "\n\n" + SYSTEM_PROMPT
+      : SYSTEM_PROMPT;
+
+    console.log(`🌐 Detected language (image): ${lang}`);
+
     const response = await axios.post(
       "https://api.groq.com/openai/v1/chat/completions",
       {
         model: "meta-llama/llama-4-scout-17b-16e-instruct",
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: finalSystemPrompt },
           { role: "user", content: [
             { type: "text", text: caption },
             { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64Image}` } }
           ]}
         ],
-        max_tokens: 500,
+        max_tokens: 700,
       },
       { headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" } }
     );
@@ -308,6 +335,9 @@ async function askGroqWithImage(base64Image, mimeType, caption) {
   }
 }
 
+// ─────────────────────────────────────────────────
+// 📲 WHATSAPP FUNCTIONS
+// ─────────────────────────────────────────────────
 async function downloadWhatsAppMedia(mediaId) {
   const headers = { Authorization: `Bearer ${WHATSAPP_TOKEN}` };
   const urlResp = await axios.get(`https://graph.facebook.com/v19.0/${mediaId}`, { headers });
