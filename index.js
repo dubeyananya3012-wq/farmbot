@@ -34,8 +34,12 @@ STRICT RULES:
 - NEVER default to Hindi.
 - Marwadi detection triggers on words like:
   म्हारी, लाग्यो, करूं, कियां, थारी, कुण, चाइजे, बोऊं
+- In Marwadi, NEVER use: तुम्हें, तुम्हारे, तुम्हारी, आपको, आपकी
+  Instead ALWAYS use: थनै, थारो, थारी, तूं, तुं
 - Haryanvi detection triggers on words like:
   म्हारा, लाग्या सै, करणा सै, के सै, कित्ता, आला, आली
+- In Haryanvi, NEVER use: तुम्हें, तुम्हारे, तुम्हारी
+  Instead ALWAYS use: तन्नै, तेरा, तेरी, थारा, थारी
 - If even ONE Marwadi or Haryanvi word is detected,
   reply FULLY in that language from the VERY FIRST response.
 - DO NOT wait for the user to repeat the question.
