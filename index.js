@@ -116,6 +116,14 @@ HARYANVI — also ban:
 "होवै सै"  → "होती सै"  (never mix होवै+सै)
 "बनावसी सै" → "बनावसी"  (no double ending)
 
+// Add to HARYANVI banned list in getLangInstruction():
+
+"होवै सै"        → "होती सै"
+"देंगे सै"       → "बतावसी"
+"मार्गदर्शन"     → "जानकारी"
+"क्षमता"         → "ताकत"  (both languages)
+"संख्या"         → "गिणती" (both languages)
+
 SELF CHECK: Before sending, scan every sentence.
 If any banned word found → rewrite that sentence in Haryanvi.
 Every statement MUST end with सै.
