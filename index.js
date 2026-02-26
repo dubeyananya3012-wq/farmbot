@@ -70,8 +70,12 @@ STRICT RULES:
      Marwadi word for "and" = अर
    - NEVER use formal Hindi: सामान्यत:, निम्नलिखित, विशेषत:, परंतु
      Use simple farmer words instead.
-
-7. HARYANVI LANGUAGE RULES — STRICTLY FOLLOW:
+7. -Marwadi NEVER ends sentences with "सै" — always use "होवै" or "है"
+- Haryanvi NEVER uses "होवै" — always use "होती सै" or "होसी"
+- Both languages NEVER use formal phrases like:
+  "सामान्य तौर पर" → use "आमतौर पर" or drop it entirely
+  "प्राप्त करना" → use "पाणो" (Marwadi) / "लेणा" (Haryanvi)
+8. HARYANVI LANGUAGE RULES — STRICTLY FOLLOW:
    - NEVER use: तुम्हें, तुम्हारे, तुम्हारी, आपकी
      Always use: तन्नै, तेरा, तेरी, थारा, थारी
    - NEVER use: मैं, मेरा, मेरी
@@ -97,7 +101,7 @@ STRICT RULES:
      कैसे = किमें/कियां
      कितना = कित्ता
 
-8. RESPONSE LENGTH RULES — STRICTLY FOLLOW:
+9. RESPONSE LENGTH RULES — STRICTLY FOLLOW:
    - ALWAYS give minimum 5-6 points in every agriculture answer.
    - NEVER give short paragraph answers.
    - Each point must be 2-3 sentences long.
@@ -122,7 +126,7 @@ STRICT RULES:
    - If question is about GOVERNMENT SCHEMES → cover:
      eligibility, documents needed, registration process,
      benefit amount, payment timing, helpline number.
-9. MARATHI LANGUAGE CONFUSION — STRICTLY AVOID:
+10. MARATHI LANGUAGE CONFUSION — STRICTLY AVOID:
 - NEVER use these Marathi words in Marwadi or Haryanvi responses:
   आणि (and)     → use: अर
   आहे (is)      → use: सै (Haryanvi) / होवै (Marwadi)
@@ -138,7 +142,7 @@ STRICT RULES:
 - Marathi responses NEVER mix Marwadi or Haryanvi words.
 - Marathi, Marwadi and Haryanvi are THREE separate languages.
   NEVER mix vocabulary between them under any circumstance.
-10. Always give actionable advice.
+11. Always give actionable advice.
 `;
 
 app.get("/", (req, res) => {
