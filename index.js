@@ -38,7 +38,7 @@ function detectLanguage(message) {
 // ─────────────────────────────────────────────
 // 💬 LANGUAGE-SPECIFIC INSTRUCTION INJECTION
 // ─────────────────────────────────────────────
-function getLangInstruction(lang) {
+function getLangInstruction(lang, message) {
   if (lang === 'MARWADI') {
     return `
 ⚠️ STRICT ORDER — MARWADI ONLY:
@@ -68,6 +68,7 @@ Every single word must be Marwadi. Hindi is completely BANNED.
 तुम्हारे→थारे | आम तौर पर→सामान्य रूप सूं |
 विभिन्न→अलग-अलग | प्रतिशत→फीसदी |
 आणि→अर (NOT Marathi) | सै→होवै (NOT Haryanvi)
+"निर्भर करता है"→"निरभर होवै" | "पर्याप्त"→"काफी"
 
 SELF CHECK: Before sending, scan every sentence.
 If any banned word found → rewrite that sentence in Marwadi.
@@ -105,24 +106,9 @@ Every single word must be Haryanvi. Hindi is completely BANNED.
 होवै→होसी/सै (NOT Marwadi) |
 आम तौर पर→आमतौर पर |
 विभिन्न→अलग-अलग | आणि→अर (NOT Marathi)
-
-// Add to banned words in getLangInstruction():
-
-MARWADI — also ban:
-"निर्भर करता है" → "निरभर होवै"
-"पर्याप्त"       → "काफी"
-
-HARYANVI — also ban:
-"होवै सै"  → "होती सै"  (never mix होवै+सै)
-"बनावसी सै" → "बनावसी"  (no double ending)
-
-// Add to HARYANVI banned list in getLangInstruction():
-
-"होवै सै"        → "होती सै"
-"देंगे सै"       → "बतावसी"
-"मार्गदर्शन"     → "जानकारी"
-"क्षमता"         → "ताकत"  (both languages)
-"संख्या"         → "गिणती" (both languages)
+"होवै सै"→"होती सै" | "बनावसी सै"→"बनावसी" |
+"देंगे सै"→"बतावसी" | "मार्गदर्शन"→"जानकारी" |
+"क्षमता"→"ताकत" | "संख्या"→"गिणती"
 
 SELF CHECK: Before sending, scan every sentence.
 If any banned word found → rewrite that sentence in Haryanvi.
@@ -130,7 +116,101 @@ Every statement MUST end with सै.
 `;
   }
 
-  return ''; // Hindi, English, Marathi, Hinglish — no extra instruction needed
+  // ── Detect Marathi ──
+  const marathiWords = [
+    'आहे','आहेत','आणि','नाही','करा','असेल',
+    'मला','तुम्ही','शेती','पीक','माती','पाऊस',
+    'खत','बियाणे','सिंचन','रोग','कीड'
+  ];
+  const isMarathi = marathiWords.some(w => message.includes(w));
+  if (isMarathi) {
+    return `
+⚠️ STRICT ORDER — MARATHI ONLY:
+The user has written in MARATHI. You MUST reply 100% in standard Marathi.
+Every single word must be proper Marathi. Hindi, Haryanvi, and Marwadi are completely BANNED.
+
+✅ ALWAYS USE these Marathi words:
+- Is/Are    → आहे, आहेत
+- And       → आणि
+- Not       → नाही
+- You       → तुम्ही, आपण
+- Water     → पाणी
+- Should    → पाहिजे, हवे
+- Will be   → असेल, होईल
+- Soil      → माती, मृदा
+- Crop      → पीक, फसल
+
+❌ BANNED — replace immediately:
+सै, होवै, होसी, अर, पण, थारो, थारी (Haryanvi/Marwadi words)
+है, हैं, और, लेकिन, यदि (Hindi words)
+
+SELF CHECK: Every sentence must be proper Marathi. Zero dialect or Hindi words allowed.
+`;
+  }
+
+  // ── Detect English (Latin script only) ──
+  const isEnglish = /^[a-zA-Z0-9\s.,!?'"()\-:;@#$%&*\/]+$/.test(message.trim());
+  if (isEnglish) {
+    return `
+⚠️ STRICT ORDER — ENGLISH ONLY:
+The user has written in ENGLISH. You MUST reply 100% in English.
+Every single word must be English. No Devanagari script whatsoever.
+No Hindi, Haryanvi, Marwadi, or Marathi words allowed.
+
+✅ Use clear, simple agricultural English suitable for Indian farmers.
+❌ BANNED: Any Devanagari characters, any regional dialect words, any Hindi words.
+
+SELF CHECK: Zero non-English characters or words in your reply.
+`;
+  }
+
+  // ── Detect Hinglish (Devanagari + Latin mix) ──
+  const hasDevanagari = /[\u0900-\u097F]/.test(message);
+  const hasLatin = /[a-zA-Z]/.test(message);
+  if (hasDevanagari && hasLatin) {
+    return `
+⚠️ STRICT ORDER — HINGLISH ONLY:
+The user has written in HINGLISH (Hindi + English mix). You MUST reply in natural Hinglish.
+Mix common Hindi words with English naturally — the way urban Indians speak.
+
+✅ OK to use: Common Hindi words (है, और, फसल, खेत, मिट्टी) freely mixed with English.
+❌ BANNED: Pure Haryanvi dialect words (सै as verb ending, तन्नै, होज्यागी)
+❌ BANNED: Pure Marwadi dialect words (थारो, थारी, होवै, चाइजे)
+❌ BANNED: Marathi words (आहे, आणि, पाहिजे)
+
+SELF CHECK: Reply must feel like natural Hinglish conversation. NOT any regional dialect.
+`;
+  }
+
+  // ── Detect Hindi (Devanagari only, not caught above) ──
+  if (hasDevanagari) {
+    return `
+⚠️ STRICT ORDER — HINDI ONLY:
+The user has written in HINDI. You MUST reply 100% in standard Hindi (Devanagari script).
+Every single word must be proper standard Hindi. Haryanvi, Marwadi, Marathi, and English are completely BANNED.
+
+✅ ALWAYS USE these Hindi words:
+- Is/Are    → है, हैं
+- And       → और
+- But       → लेकिन, परंतु
+- If        → यदि, अगर
+- You       → आप, आपकी, आपके, तुम
+- Water     → पानी
+- Should    → चाहिए
+- Will be   → होगा, होगी
+- Soil      → मिट्टी
+- Crop      → फसल
+
+❌ BANNED — replace immediately:
+सै (Haryanvi) → है/हैं
+होवै, थारो, थारी, चाइजे (Marwadi) → proper Hindi equivalents
+आहे, आणि (Marathi) → proper Hindi equivalents
+
+SELF CHECK: Every sentence must be proper standard Hindi. Zero dialect bleeding allowed.
+`;
+  }
+
+  return ''; // absolute fallback
 }
 
 // ─────────────────────────────────────────────
@@ -222,20 +302,37 @@ STRICT RULES:
    - ALWAYS use: तेरा/तेरी, तन्नै, अर, पण, जै, सै, होसी, होज्यागी, फसलां, बातां
    - EVERY sentence MUST end with सै
 
-7. RESPONSE LENGTH — ALWAYS 5-6 POINTS:
-   - Each point = 2-3 sentences
-   - NEVER give short or one-paragraph answers
-   - Structure: identify → solution → chemical remedy →
-     organic remedy → prevention → consult officer
+7. HINDI RULES:
+   - NEVER use: सै (Haryanvi), होवै/थारो/थारी (Marwadi), आहे/आणि (Marathi)
+   - ALWAYS use standard Hindi: है, हैं, और, लेकिन, आप, यदि, चाहिए
 
-8. BANNED FORMAL HINDI IN ALL DIALECTS:
-   सामान्यत:, निम्नलिखित, विशेषत:, परंतु,
-   उपयुक्त, सुनिश्चित, समायोजित, प्रभावित,
-   वर्षा ऋतु, आधारित, पर्याप्त
+8. ENGLISH RULES:
+   - NEVER use any Devanagari script or non-English words
+   - Reply in clear, simple English suitable for farmers
 
-9. NEVER output foreign language text (Vietnamese, Arabic, Chinese, etc.)
+9. MARATHI RULES:
+   - NEVER use: सै, होवै, थारो (Haryanvi/Marwadi), है, हैं, और (Hindi)
+   - ALWAYS use proper Marathi: आहे, आहेत, आणि, पाहिजे, होईल
 
-10. Always give actionable advice.
+10. HINGLISH RULES:
+    - Mix Hindi and English naturally
+    - NEVER slip into Haryanvi (सै endings) or Marwadi (थारो/होवै) dialect
+    - Common Hindi words like है, और, फसल are fine
+
+11. RESPONSE LENGTH — ALWAYS 5-6 POINTS:
+    - Each point = 2-3 sentences
+    - NEVER give short or one-paragraph answers
+    - Structure: identify → solution → chemical remedy →
+      organic remedy → prevention → consult officer
+
+12. BANNED FORMAL HINDI IN ALL DIALECTS:
+    सामान्यत:, निम्नलिखित, विशेषत:, परंतु,
+    उपयुक्त, सुनिश्चित, समायोजित, प्रभावित,
+    वर्षा ऋतु, आधारित, पर्याप्त
+
+13. NEVER output foreign language text (Vietnamese, Arabic, Chinese, etc.)
+
+14. Always give actionable advice.
 `;
 
 // ─────────────────────────────────────────────────
@@ -291,7 +388,8 @@ async function askGroq(userMessage) {
   try {
     // 🔍 Detect language from user message
     const lang = detectLanguage(userMessage);
-    const langInstruction = getLangInstruction(lang);
+    // ✅ Pass userMessage as second arg for full detection
+    const langInstruction = getLangInstruction(lang, userMessage);
 
     // 💉 Inject language instruction at TOP of system prompt
     const finalSystemPrompt = langInstruction
@@ -323,7 +421,8 @@ async function askGroqWithImage(base64Image, mimeType, caption) {
   try {
     // 🔍 Detect language from image caption
     const lang = detectLanguage(caption);
-    const langInstruction = getLangInstruction(lang);
+    // ✅ Pass caption as second arg for full detection
+    const langInstruction = getLangInstruction(lang, caption);
 
     const finalSystemPrompt = langInstruction
       ? langInstruction + "\n\n" + SYSTEM_PROMPT
