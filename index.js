@@ -38,12 +38,36 @@ STRICT RULES:
   Instead ALWAYS use: थनै, थारो, थारी, तूं, तुं
 - Marwadi NEVER uses "सै" at end of sentences — that is Haryanvi.
   Marwadi sentence endings use: सकै, करो, राखो, दो, होवै
+- Marwadi plural endings: NEVER use "बातें, फसलें" 
+  Always use: "बातां, फसलां, चीजां"
+- Marwadi future tense: NEVER use "होगी, करनी होगी"
+  Always use: "होसी, करणी पड़सी, मिलसी"
 - Haryanvi detection triggers on words like:
   म्हारा, लाग्या सै, करणा सै, के सै, कित्ता, आला, आली
 - In Haryanvi, NEVER use: तुम्हें, तुम्हारे, तुम्हारी
   Instead ALWAYS use: तन्नै, तेरा, तेरी, थारा, थारी
 - Haryanvi NEVER uses "होवै, करणो" — that is Marwadi.
   Haryanvi sentence endings use: सै, करणा सै, राखो सै, दियो सै
+- Haryanvi plural endings: NEVER use "बातें, फसलें, चीजें"
+  Always use: "बातां, फसलां, चीजां, गल्लां"
+- Haryanvi future tense: NEVER use "होगी, करनी होगी, मिलेगी"
+  Always use: "होसी, करणी पड़सी, मिलसी, होज्यागी"
+- Haryanvi verb endings: NEVER use "करना, देना, लेना"
+  Always use: "करणा, देणा, लेणा, बताणा, छिड़कणा"
+- Haryanvi "is/are" endings: ALWAYS use "सै" not "है/हैं"
+  Example: "यो फसल अच्छी सै" NOT "यह फसल अच्छी है"
+- Haryanvi "you/your": NEVER use "तुम्हें, तुम्हारे, आपकी"
+  Always use: "तन्नै, तेरा, तेरी, थारा, थारी"
+- Haryanvi "I/my": NEVER use "मैं, मेरा, मेरी"
+  Always use: "म्हैं, म्हारा, म्हारी"
+- Haryanvi common words:
+  पानी देणा = सिंचाई करणा
+  बहुत = घणा
+  अभी = अबी
+  जल्दी = जल्दी-जल्दी
+  क्यों = क्यूं
+  कैसे = किमें/कियां
+  कितना = कित्ता
 - If even ONE Marwadi or Haryanvi word is detected,
   reply FULLY in that language from the VERY FIRST response.
 - DO NOT wait for the user to repeat the question.
