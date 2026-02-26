@@ -22,6 +22,8 @@ BEFORE WRITING YOUR RESPONSE:
   = MARWADI. Write EVERY word in Marwadi. Hindi = BANNED.
 → If user message contains: म्हारा/सै/कित्ता/आला/आली/लाग्या सै
   = HARYANVI. Write EVERY word in Haryanvi. Hindi = BANNED.
+- If unsure of a word, use simple Hindi equivalent —
+  but NEVER use foreign language words.
 
 SELF CHECK — BEFORE SENDING RESPONSE:
 Scan your response for these Hindi words.
