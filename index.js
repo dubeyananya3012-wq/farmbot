@@ -879,54 +879,102 @@ app.post("/webhook", async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────
-// 🤖 GROQ FUNCTIONS — LANGUAGE INJECTION HERE
+// 🤖 GROQ MODEL CONFIG — FALLBACK CHAIN
+// ─────────────────────────────────────────────────
+//
+// FREE TIER LIMITS (per day):
+//   llama-3.3-70b-versatile  → 100K TPD,  1K RPD  ≈ ~13 questions/day
+//   llama-3.1-8b-instant     → 500K TPD, 14.4K RPD ≈ ~65 questions/day
+//
+// REAL QUESTION CAPACITY (each Q uses ~2,450 tokens):
+//   Primary   (70B): 100,000 ÷ 2,450 ≈  40 questions/day
+//   Fallback  (8B):  500,000 ÷ 2,450 ≈ 200 questions/day
+//   COMBINED FREE:                     ≈ 240 questions/day
+//
+// DEV TIER (paid, ~$5-10/month adds credits):
+//   llama-3.3-70b-versatile  → much higher limits
+//   Realistically 1,000–5,000 questions/day depending on spend
+//
+// STRATEGY: Try 70B first (best quality). On 429 rate limit,
+//           instantly fall back to 8B (same language rules, good quality).
+//           Only show error if BOTH models fail.
+
+const TEXT_MODELS = [
+  { id: "llama-3.3-70b-versatile",  label: "70B-primary"  },
+  { id: "llama-3.1-8b-instant",     label: "8B-fallback"  },
+];
+
+// ─────────────────────────────────────────────────
+// 🤖 GROQ FUNCTIONS — WITH AUTO FALLBACK
 // ─────────────────────────────────────────────────
 async function askGroq(userMessage) {
-  try {
-    // 🔍 Detect language from user message
-    const lang = detectLanguage(userMessage);
-    // ✅ Pass userMessage as second arg for full detection
-    const langInstruction = getLangInstruction(lang, userMessage);
+  // 🔍 Detect language once, reuse for all model attempts
+  const lang = detectLanguage(userMessage);
+  const langInstruction = getLangInstruction(lang, userMessage);
+  const finalSystemPrompt = langInstruction
+    ? langInstruction + "\n\n" + SYSTEM_PROMPT
+    : SYSTEM_PROMPT;
 
-    // 💉 Inject language instruction at TOP of system prompt
-    const finalSystemPrompt = langInstruction
-      ? langInstruction + "\n\n" + SYSTEM_PROMPT
-      : SYSTEM_PROMPT;
+  console.log(`🌐 Detected language: ${lang}`);
 
-    console.log(`🌐 Detected language: ${lang}`);
+  // 🔄 Try each model in order — stop at first success
+  for (const model of TEXT_MODELS) {
+    try {
+      console.log(`🤖 Trying model: ${model.label} (${model.id})`);
 
-    const response = await axios.post(
-      "https://api.groq.com/openai/v1/chat/completions",
-      {
-        model: "llama-3.3-70b-versatile",
-        messages: [
-          { role: "system", content: finalSystemPrompt },
-          { role: "user",   content: userMessage }
-        ],
-        max_tokens: 800,
-      },
-      { headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" } }
-    );
-    return response.data.choices[0].message.content.trim();
-  } catch (err) {
-    console.error("Groq text error:", err.response?.data || err.message);
-    return "Sorry, I'm having trouble right now. Please try again in a moment. 🙏";
+      const response = await axios.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        {
+          model: model.id,
+          messages: [
+            { role: "system", content: finalSystemPrompt },
+            { role: "user",   content: userMessage }
+          ],
+          max_tokens: 800,
+        },
+        { headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" } }
+      );
+
+      const tokensUsed = response.data.usage?.total_tokens || "?";
+      console.log(`✅ Success: ${model.label} | tokens used: ${tokensUsed}`);
+      return response.data.choices[0].message.content.trim();
+
+    } catch (err) {
+      const errData  = err.response?.data?.error;
+      const status   = err.response?.status;
+      const errCode  = errData?.code || "";
+      const errMsg   = errData?.message || err.message;
+
+      // 429 = rate limit hit → try next model
+      if (status === 429 || errCode === "rate_limit_exceeded") {
+        console.warn(`⚠️ Rate limit on ${model.label} → trying next model...`);
+        continue; // move to next model in array
+      }
+
+      // Any other error (auth, server crash, etc.) — log and try next
+      console.error(`❌ Error on ${model.label}: ${errMsg}`);
+      continue;
+    }
   }
+
+  // All models failed
+  console.error("❌ All models exhausted — both primary and fallback failed");
+  return "Sorry, I'm having trouble right now. Please try again in a moment. 🙏";
 }
 
 async function askGroqWithImage(base64Image, mimeType, caption) {
+  // Image model: llama-4-scout has vision, 8b does not — so only 1 vision model
+  // But we still wrap in try/catch with a graceful fallback message
+  const lang = detectLanguage(caption);
+  const langInstruction = getLangInstruction(lang, caption);
+  const finalSystemPrompt = langInstruction
+    ? langInstruction + "\n\n" + SYSTEM_PROMPT
+    : SYSTEM_PROMPT;
+
+  console.log(`🌐 Detected language (image): ${lang}`);
+
   try {
-    // 🔍 Detect language from image caption
-    const lang = detectLanguage(caption);
-    // ✅ Pass caption as second arg for full detection
-    const langInstruction = getLangInstruction(lang, caption);
-
-    const finalSystemPrompt = langInstruction
-      ? langInstruction + "\n\n" + SYSTEM_PROMPT
-      : SYSTEM_PROMPT;
-
-    console.log(`🌐 Detected language (image): ${lang}`);
-
+    console.log(`🤖 Trying vision model: llama-4-scout`);
     const response = await axios.post(
       "https://api.groq.com/openai/v1/chat/completions",
       {
@@ -938,13 +986,42 @@ async function askGroqWithImage(base64Image, mimeType, caption) {
             { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64Image}` } }
           ]}
         ],
-        max_tokens: 700,
+        max_tokens: 800,
       },
       { headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" } }
     );
+    const tokensUsed = response.data.usage?.total_tokens || "?";
+    console.log(`✅ Vision success | tokens: ${tokensUsed}`);
     return response.data.choices[0].message.content.trim();
+
   } catch (err) {
-    console.error("Groq image error:", err.response?.data || err.message);
+    const status  = err.response?.status;
+    const errCode = err.response?.data?.error?.code || "";
+
+    // If vision model rate-limited, fall back to text-only analysis via 8B
+    if (status === 429 || errCode === "rate_limit_exceeded") {
+      console.warn("⚠️ Vision model rate limited → falling back to text-only with 8B");
+      try {
+        const fallbackResponse = await axios.post(
+          "https://api.groq.com/openai/v1/chat/completions",
+          {
+            model: "llama-3.1-8b-instant",
+            messages: [
+              { role: "system", content: finalSystemPrompt },
+              { role: "user",   content: `${caption}\n\n(Note: Image could not be processed. Please answer based on the text description only.)` }
+            ],
+            max_tokens: 800,
+          },
+          { headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" } }
+        );
+        console.log("✅ Image text-fallback success via 8B");
+        return fallbackResponse.data.choices[0].message.content.trim();
+      } catch (fallbackErr) {
+        console.error("❌ Image fallback also failed:", fallbackErr.response?.data || fallbackErr.message);
+      }
+    } else {
+      console.error("❌ Vision error:", err.response?.data || err.message);
+    }
     return "I couldn't analyze the image. Please try again or describe what you see. 🌿";
   }
 }
