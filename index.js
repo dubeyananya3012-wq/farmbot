@@ -106,6 +106,16 @@ Every single word must be Haryanvi. Hindi is completely BANNED.
 आम तौर पर→आमतौर पर |
 विभिन्न→अलग-अलग | आणि→अर (NOT Marathi)
 
+// Add to banned words in getLangInstruction():
+
+MARWADI — also ban:
+"निर्भर करता है" → "निरभर होवै"
+"पर्याप्त"       → "काफी"
+
+HARYANVI — also ban:
+"होवै सै"  → "होती सै"  (never mix होवै+सै)
+"बनावसी सै" → "बनावसी"  (no double ending)
+
 SELF CHECK: Before sending, scan every sentence.
 If any banned word found → rewrite that sentence in Haryanvi.
 Every statement MUST end with सै.
