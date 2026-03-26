@@ -1051,10 +1051,17 @@ async function sendWhatsAppMessage(to, text) {
   }
 }
 
+app.get("/ping", (req, res) => {
+  res.status(200).send("OK");
+});
+
 app.get("/test", async (req, res) => {
   const reply = await askGroq("How to grow strawberries?");
   res.json({ reply });
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🌾 FarmBot server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`🌾 FarmBot server running on port ${PORT}`);
+  require("./healthCheck"); // ✅ starts 12-min cron after server is up
+});
